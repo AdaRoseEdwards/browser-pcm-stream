@@ -1,59 +1,64 @@
-(function(window) {
-  var client = new BinaryClient('ws://localhost:9001');
+/* global Promise, BinaryClient, Int16Array */
+/* eslint no-var: 0 */
 
-  client.on('open', function() {
-    window.Stream = client.createStream();
+'use strict';
 
-    if (!navigator.getUserMedia)
-      navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia ||
-    navigator.mozGetUserMedia || navigator.msGetUserMedia;
+var recording = false;
 
-    if (navigator.getUserMedia) {
-      navigator.getUserMedia({audio:true}, success, function(e) {
-        alert('Error capturing audio.');
-      });
-    } else alert('getUserMedia not supported in this browser.');
+function convertoFloat32ToInt16(buffer) {
+	var l = buffer.length;
+	var buf = new Int16Array(l)
 
-    var recording = false;
+	while (l--) {
+		buf[l] = buffer[l] * 0xFFFF; //convert to 16 bit
+	}
+	return buf.buffer
+}
 
-    window.startRecording = function() {
-      recording = true;
-    }
+window.startRecording = function () {
 
-    window.stopRecording = function() {
-      recording = false;
-      window.Stream.end();
-    }
+	var client = new BinaryClient('ws://localhost:9001');
+	recording = true;
+	var stream;
 
-    function success(e) {
-      audioContext = window.AudioContext || window.webkitAudioContext;
-      context = new audioContext();
+	Promise.all([
+		new Promise(function (resolve) {
+			if (!navigator.getUserMedia)
+				navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia ||
+				navigator.mozGetUserMedia || navigator.msGetUserMedia;
 
-      // the sample rate is in context.sampleRate
-      audioInput = context.createMediaStreamSource(e);
+			if (navigator.getUserMedia) {
+				navigator.getUserMedia({
+					audio: true
+				}, resolve, function () {
+					alert('Error capturing audio.');
+				});
+			} else alert('getUserMedia not supported in this browser.');
+		}),
+		new Promise(function (resolve) {
+			client.on('open', resolve);
+		}),
+	]).then(function (e) {
 
-      var bufferSize = 2048;
-      recorder = context.createScriptProcessor(bufferSize, 1, 1);
+		var AudioContext = window.AudioContext || window.webkitAudioContext;
+		var context = new AudioContext();
+		console.log(context.sampleRate);
 
-      recorder.onaudioprocess = function(e){
-        if(!recording) return;
-        console.log ('recording');
-        var left = e.inputBuffer.getChannelData(0);
-        window.Stream.write(convertoFloat32ToInt16(left));
-      }
+		// the sample rate is in context.sampleRate
+		var audioInput = context.createMediaStreamSource(e[0]);
 
-      audioInput.connect(recorder)
-      recorder.connect(context.destination); 
-    }
+		var bufferSize = 256;
+		var recorder = context.createScriptProcessor(bufferSize, 1, 1);
 
-    function convertoFloat32ToInt16(buffer) {
-      var l = buffer.length;
-      var buf = new Int16Array(l)
+		stream = client.createStream();
+		recorder.onaudioprocess = function (e) {
+			if (!recording) return;
+			console.log('recording');
+			var left = e.inputBuffer.getChannelData(0);
+			stream.write(convertoFloat32ToInt16(left));
+		}
 
-      while (l--) {
-        buf[l] = buffer[l]*0xFFFF;    //convert to 16 bit
-      }
-      return buf.buffer
-    }
-  });
-})(this);
+		audioInput.connect(recorder)
+		recorder.connect(context.destination);
+	});
+}

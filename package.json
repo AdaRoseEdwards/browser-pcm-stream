@@ -1,15 +1,22 @@
 {
-  "name": "MicStreamToWav",
-  "version": "0.0.0",
-  "description": "Stream microphone pcm data to server and save on wav file.",
-  "scripts": {
-    "start": "node app.js"
-  },
+  "name": "browser-pcm-stream",
+  "version": "1.0.0",
+  "description": "It streams pcm chunks from the browser's mic into a node server through websockets. Those chunks are piped into node-wav FileWriter.",
+  "main": "app.js",
   "dependencies": {
-    "binaryjs": "latest",
-    "express": "latest",
-    "jade": "latest",
-    "wav": "latest"
+    "binaryjs": "^0.2.1",
+    "express": "^4.14.0",
+    "jade": "^1.11.0",
+    "lame": "^1.2.4"
   },
-  "author": "gabrielpoca"
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "me:browser-pcm-stream"
+  },
+  "author": "",
+  "license": "MIT"
 }
